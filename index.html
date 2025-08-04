@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated RTMP Streaming with SRS & FFmpeg</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styling with a professional gradient background */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* gray-900 */
+            background-image: linear-gradient(145deg, #111827 0%, #130f28 50%, #0c1a2e 100%);
+        }
+
+        /* Main container styling */
+        .main-container {
+            background: rgba(17, 24, 39, 0.8); /* gray-900 with transparency */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(55, 65, 81, 0.4); /* gray-700 */
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Tab styling */
+        .tab-button {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            color: #60a5fa; /* blue-400 */
+            border-bottom-color: #60a5fa;
+        }
+        .tab-button:not(.active):hover {
+            color: #9ca3af; /* gray-400 */
+            border-bottom-color: #374151; /* gray-700 */
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Accordion styling for steps */
+        .accordion-header {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .accordion-header:hover {
+            background-color: rgba(55, 65, 81, 0.3); /* gray-700 */
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, padding 0.5s ease-out;
+        }
+        .accordion-item.open .accordion-content {
+            max-height: 1500px; /* Adjust as needed */
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+        .accordion-item.open .accordion-arrow {
+            transform: rotate(90deg);
+        }
+        .accordion-arrow {
+            transition: transform 0.3s ease;
+        }
+
+        /* Code block container */
+        .code-block {
+            position: relative;
+            background-color: #0c111c;
+            border: 1px solid #374151; /* gray-700 */
+        }
+        
+        /* Modern copy button with icon */
+        .copy-button {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: #1f2937; /* gray-800 */
+            color: #9ca3af; /* gray-400 */
+            border: 1px solid #374151; /* gray-700 */
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .copy-button:hover {
+            background-color: #374151;
+            color: #e5e7eb; /* gray-200 */
+        }
+        .copy-button .copy-icon, .copy-button .check-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+        .copy-button .check-icon {
+            display: none;
+            color: #4ade80; /* green-400 */
+        }
+        .copy-button.copied {
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+        .copy-button.copied .copy-text {
+            color: #4ade80;
+        }
+        .copy-button.copied .copy-icon {
+            display: none;
+        }
+        .copy-button.copied .check-icon {
+            display: block;
+        }
+    </style>
+</head>
+<body class="text-gray-300">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                Automated RTMP Streaming Server
+            </h1>
+            <p class="mt-4 text-lg text-gray-400">A professional guide to using SRS and FFmpeg for dynamic video stream management.</p>
+        </header>
+
+        <div class="main-container p-6 sm:p-8">
+            <!-- Tabs Navigation -->
+            <div class="border-b border-gray-700 mb-6">
+                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button class="tab-button active whitespace-nowrap py-4 px-1 text-base font-medium text-gray-500" data-tab="goal">
+                        Overview
+                    </button>
+                    <button class="tab-button whitespace-nowrap py-4 px-1 text-base font-medium text-gray-500" data-tab="tools">
+                        Tools
+                    </button>
+                    <button class="tab-button whitespace-nowrap py-4 px-1 text-base font-medium text-gray-500" data-tab="architecture">
+                        Architecture
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div>
+                <!-- Goal Tab -->
+                <div id="tab-goal" class="tab-content active">
+                    <h2 class="text-2xl font-semibold flex items-center text-emerald-400 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Project Goal
+                    </h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-300">
+                        <li>Accept multiple input sources (camera RTSP/RTMP, local videos, etc.).</li>
+                        <li>Restream them through SRS as dynamic RTMP endpoints (e.g., <code>rtmp://your-ip/live/cam1</code>).</li>
+                        <li>Automate the entire setup to avoid manual configuration for each new stream.</li>
+                    </ul>
+                </div>
+
+                <!-- Tools Tab -->
+                <div id="tab-tools" class="tab-content">
+                    <h2 class="text-2xl font-semibold flex items-center text-amber-400 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                        Technology Stack
+                    </h2>
+                    <ul class="list-disc list-inside space-y-2 text-gray-300">
+                        <li><strong class="text-white">SRS (Simple Realtime Server):</strong> The core RTMP server.</li>
+                        <li><strong class="text-white">FFmpeg:</strong> For ingesting, re-encoding, or relaying inputs to RTMP.</li>
+                        <li><strong class="text-white">Python Script:</strong> To automate adding and managing new sources.</li>
+                        <li><strong class="text-white">Docker:</strong> For easy and clean SRS deployment.</li>
+                    </ul>
+                </div>
+
+                <!-- Architecture Tab -->
+                <div id="tab-architecture" class="tab-content">
+                     <h2 class="text-2xl font-semibold flex items-center text-sky-400 mb-4">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V7a2 2 0 012-2h6l2-2h2l-2 2z" /></svg>
+                        System Architecture
+                    </h2>
+                    <p class="mt-4 text-gray-400">This setup creates a flexible pipeline. The Python script acts as a manager, using FFmpeg to pull video from various sources and push it to the SRS media server. SRS then makes these streams available to viewers on demand.</p>
+                    <div class="mt-6">
+                        <h3 class="font-semibold text-lg mb-4 text-gray-200">Data Flow Diagram</h3>
+                        <div class="flex flex-col md:flex-row items-center justify-between text-center text-sm p-4 bg-gray-900/50 rounded-lg">
+                            <div class="flex flex-col items-center"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><p class="font-bold text-white">Input Sources</p><p class="text-xs text-gray-400">RTSP, MP4 files</p></div></div>
+                            <div class="text-gray-500 my-2 md:my-0 md:mx-4 text-2xl font-light">→</div>
+                            <div class="flex flex-col items-center"><div class="p-3 bg-gray-700 rounded-lg border border-gray-600"><p class="font-bold text-white">Python + FFmpeg</p><p class="text-xs text-gray-400">Pulls & Pushes</p></div></div>
+                            <div class="text-gray-500 my-2 md:my-0 md:mx-4 text-2xl font-light">→</div>
+                            <div class="flex flex-col items-center"><div class="p-3 bg-blue-900/50 rounded-lg border border-blue-700"><p class="font-bold text-blue-300">SRS Server</p><p class="text-xs text-blue-400">Distributes</p></div></div>
+                            <div class="text-gray-500 my-2 md:my-0 md:mx-4 text-2xl font-light">→</div>
+                            <div class="flex flex-col items-center"><div class="p-3 bg-emerald-900/50 rounded-lg border border-emerald-700"><p class="font-bold text-emerald-300">Viewers</p><p class="text-xs text-emerald-400">VLC, Web Player</p></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step-by-Step Guide Accordion -->
+            <div class="mt-12">
+                <h2 class="text-3xl font-semibold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                    Implementation Guide
+                </h2>
+                <div class="space-y-4">
+                    <!-- Step 1 -->
+                    <div class="accordion-item bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div class="accordion-header flex justify-between items-center p-5">
+                            <h3 class="text-xl font-bold text-gray-200">
+                                <span class="text-blue-400">Step 1:</span> Install Prerequisites
+                            </h3>
+                            <svg class="accordion-arrow w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div class="accordion-content px-5">
+                            <p class="mb-4 text-gray-400">Ensure Docker and FFmpeg are installed on your system. Docker will run the SRS server, and FFmpeg is required by the Python script.</p>
+                            <ul class="list-disc list-inside text-gray-400 space-y-1">
+                                <li><a href="https://docs.docker.com/get-docker/" target="_blank" class="text-blue-400 hover:underline">Install Docker</a></li>
+                                <li><a href="https://ffmpeg.org/download.html" target="_blank" class="text-blue-400 hover:underline">Install FFmpeg</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="accordion-item bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div class="accordion-header flex justify-between items-center p-5">
+                            <h3 class="text-xl font-bold text-gray-200">
+                                <span class="text-blue-400">Step 2:</span> Launch the SRS Media Server
+                            </h3>
+                            <svg class="accordion-arrow w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div class="accordion-content px-5">
+                           <p class="mb-4 text-gray-400">Use the recommended Docker command to start an instance of SRS. This command maps the necessary ports for RTMP, the API, and the web console.</p>
+                            <div class="code-block rounded-md p-4 mt-2">
+                                <button class="copy-button" onclick="copyCode(this)">
+                                    <span class="copy-text">Copy</span>
+                                    <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </button>
+                                <pre><code class="language-bash">docker run -it -d --name srs \
+  -p 1935:1935 -p 1985:1985 -p 8080:8080 \
+  ossrs/srs:latest</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="accordion-item bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div class="accordion-header flex justify-between items-center p-5">
+                            <h3 class="text-xl font-bold text-gray-200">
+                                <span class="text-blue-400">Step 3:</span> Configure and Run the Python Script
+                            </h3>
+                            <svg class="accordion-arrow w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div class="accordion-content px-5">
+                            <p class="mb-4 text-gray-400">Save the Python script below as a file (e.g., `start_streams.py`). Modify the `streams` dictionary to include your actual video sources and desired stream keys.</p>
+                            <div class="code-block rounded-md p-4 mt-2">
+                                <button class="copy-button" onclick="copyCode(this)">
+                                    <span class="copy-text">Copy</span>
+                                    <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </button>
+                                <pre><code class="language-python">import subprocess
+import time
+
+# Define your input sources and desired output stream keys
+streams = {
+    "cam1": "rtsp://192.168.1.10/stream1",
+    "cam2": "rtsp://192.168.1.11/stream2",
+    "video1": "/path/to/your/local/video1.mp4"
+}
+
+def start_stream(name, source):
+    output_url = f"rtmp://localhost:1935/live/{name}"
+    command = [
+        "ffmpeg", "-re", "-i", source,
+        "-c:v", "copy", "-c:a", "aac", "-f", "flv",
+        output_url
+    ]
+    print(f"🚀 Starting stream '{name}'...")
+    return subprocess.Popen(command)
+
+processes = []
+for name, src in streams.items():
+    processes.append(start_stream(name, src))
+    time.sleep(2)
+
+print("\n✅ All stream processes initiated.")
+try:
+    for p in processes: p.wait()
+except KeyboardInterrupt:
+    print("\n🛑 Terminating all FFmpeg processes...")
+    for p in processes: p.terminate()
+</code></pre>
+                            </div>
+                            <p class="mt-4 text-gray-400">Run the script from your terminal:</p>
+                            <div class="code-block rounded-md p-4 mt-2">
+                                <pre><code class="language-bash">python start_streams.py</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Step 4 -->
+                     <div class="accordion-item bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div class="accordion-header flex justify-between items-center p-5">
+                            <h3 class="text-xl font-bold text-gray-200">
+                                <span class="text-blue-400">Step 4:</span> Access and View the Streams
+                            </h3>
+                            <svg class="accordion-arrow w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div class="accordion-content px-5">
+                            <p class="text-gray-400">Your streams are now live. Use an RTMP-compatible player to view them. Replace `<your-server-ip>` with the IP address of the machine running Docker.</p>
+                            <div class="mt-4 space-y-2">
+                                <p><code class="bg-gray-700 p-1 rounded">rtmp://&lt;your-server-ip&gt;/live/cam1</code></p>
+                                <p><code class="bg-gray-700 p-1 rounded">rtmp://&lt;your-server-ip&gt;/live/cam2</code></p>
+                            </div>
+                            <p class="mt-4 text-gray-400">You can preview them in:</p>
+                            <ul class="list-disc list-inside mt-2 text-gray-300">
+                                <li><strong>VLC Media Player:</strong> Go to <code class="bg-gray-700 p-1 rounded">Media &gt; Open Network Stream...</code></li>
+                                <li><strong>Web Player:</strong> Use a player like video.js or Clappr to embed the stream.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Tab Functionality ---
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Deactivate all
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                // Activate clicked
+                button.classList.add('active');
+                document.getElementById('tab-' + button.dataset.tab).classList.add('active');
+            });
+        });
+
+        // --- Accordion Functionality ---
+        const accordionItems = document.querySelectorAll('.accordion-item');
+        accordionItems.forEach(item => {
+            const header = item.querySelector('.accordion-header');
+            header.addEventListener('click', () => {
+                const isOpen = item.classList.contains('open');
+                // Optional: Close all other accordions
+                // accordionItems.forEach(i => i.classList.remove('open'));
+                if (!isOpen) {
+                    item.classList.add('open');
+                } else {
+                    item.classList.remove('open');
+                }
+            });
+        });
+
+        // --- Copy Code Functionality ---
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('pre');
+            const code = codeBlock.innerText;
+            const copyText = button.querySelector('.copy-text');
+            
+            navigator.clipboard.writeText(code).then(() => {
+                button.classList.add('copied');
+                if (copyText) copyText.textContent = 'Copied!';
+                
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    if (copyText) copyText.textContent = 'Copy';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                if (copyText) copyText.textContent = 'Failed!';
+            });
+        }
+    </script>
+
+</body>
+</html>
