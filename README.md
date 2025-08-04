@@ -1,1 +1,1 @@
-# SRS-multi-streamin-server
+# SRS-multi-streaming-server
