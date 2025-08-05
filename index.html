@@ -187,9 +187,7 @@
                            <p class="mb-4 text-slate-400">Use Docker to start SRS, mapping the necessary ports.</p>
                             <div class="code-block rounded-md p-4 mt-2">
                                 <button class="copy-button" onclick="copyCode(this)"><span class="copy-text">Copy</span><svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg><svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></button>
-                                <pre><code class="language-bash">docker run -it -d --name srs \
-  -p 1935:1935 -p 1985:1985 -p 8080:8080 \
-  ossrs/srs:latest</code></pre>
+                                <pre><code class="language-bash">docker run --rm -it -p 1935:1935 -p 8080:8080 -p 1985:1985 -p 8000:8000/udp -v "%cd%":/usr/local/srs/conf ossrs/srs:5 ./objs/srs -c conf/srs.conf</code></pre>
                             </div>
                         </div>
                     </div>
